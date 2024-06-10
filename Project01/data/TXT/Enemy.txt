@@ -1,0 +1,32 @@
+#------------------------------------------------------------------------------
+# 敵の設置情報
+#------------------------------------------------------------------------------
+START_ENEMYSET
+
+	ENEMYSET
+		POSSET
+			POS		= 100.0 0.0 100.0
+			POS		= 100.0 0.0 -100.0
+			POS		= -100.0 0.0 -100.0
+			POS		= -100.0 0.0 100.0
+		ENDPOSSET
+		LOOP	= 1
+	END_ENEMYSET
+	
+		ENEMYSET
+		POSSET
+			POS		= 200.0 0.0 0.0
+			POS		= 100.0 0.0 0.0
+			POS		= -100.0 0.0 -100.0
+		ENDPOSSET
+		LOOP	= 0
+	END_ENEMYSET
+	
+			ENEMYSET
+		POSSET
+			POS		= -200.0 0.0 0.0
+		ENDPOSSET
+		LOOP	= 1
+	END_ENEMYSET
+
+END_ENEMYSET
