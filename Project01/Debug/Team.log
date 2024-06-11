@@ -1,5 +1,80 @@
-﻿  enemy.cpp
-  joyconbox.cpp
+﻿  precompile.cpp
+  2DEffect.cpp
+  2DUI.cpp
+  2DUI_edit.cpp
+  action.cpp
+  aim.cpp
+  boss.cpp
+  camera.cpp
+  CubeBlock.cpp
+  CubeDamage.cpp
+  CubeEffect.cpp
+  CubeSpin.cpp
+  debugproc.cpp
+  Edit.cpp
+  effect.cpp
+  enemy.cpp
+  fade.cpp
+  game.cpp
+  gameMode.cpp
+  hid.cpp
+  input.cpp
   コードを生成中...
-     ライブラリ C:\Users\student\Downloads\Wow-main\Wow-main\Project01\Debug\Team.lib とオブジェクト C:\Users\student\Downloads\Wow-main\Wow-main\Project01\Debug\Team.exp を作成中
-  Team.vcxproj -> C:\Users\student\Downloads\Wow-main\Wow-main\Project01\Debug\Team.exe
+  コンパイル中...
+  joycon.cpp
+C:\Users\student\Desktop\新しいフォルダー (10)\joycon_directX\Project01\joycon.cpp(251,24): warning C4150: 'hid_device_' 型を削除するため delete 演算子が呼び出されましたが、定義がありません。
+C:\Users\student\Desktop\新しいフォルダー (10)\joycon_directX\Project01\hidapi\hidapi.h(45): message : 'hid_device_' の宣言を確認してください
+  joyconbox.cpp
+  light.cpp
+  log.cpp
+  main.cpp
+  manager.cpp
+  MapModel.cpp
+  model.cpp
+  modelEffect.cpp
+  motion.cpp
+  number.cpp
+  numberBillboard.cpp
+  numberFall.cpp
+  object.cpp
+  object2D.cpp
+  object3D.cpp
+  objectBillboard.cpp
+  objectX.cpp
+  objectXtex.cpp
+  objGauge2D.cpp
+  コードを生成中...
+  コンパイル中...
+  objmeshCube.cpp
+  objmeshCylinder.cpp
+  objmeshDome.cpp
+  objmeshField.cpp
+  objmeshRing.cpp
+  objmeshWall.cpp
+  particle.cpp
+  Pause.cpp
+  player.cpp
+  playerEffect.cpp
+  ranking.cpp
+  renderer.cpp
+  result.cpp
+  SampleLevelModel.cpp
+  SampleObj2D.cpp
+  SampleObj3D.cpp
+  SampleObjBillboard.cpp
+  SampleObjX.cpp
+  Shuriken.cpp
+  skinmesh.cpp
+  コードを生成中...
+  コンパイル中...
+  slash.cpp
+  sound.cpp
+  texture.cpp
+  time.cpp
+  title.cpp
+  useful.cpp
+  Xmodel.cpp
+  コードを生成中...
+  LINK : 前回のインクリメンタル リンクで C:\Users\student\Desktop\新しいフォルダー (10)\joycon_directX\Project01\Debug\Team.exe が見つからなかったか、ビルドされませんでした。フル リンクを行います。
+     ライブラリ C:\Users\student\Desktop\新しいフォルダー (10)\joycon_directX\Project01\Debug\Team.lib とオブジェクト C:\Users\student\Desktop\新しいフォルダー (10)\joycon_directX\Project01\Debug\Team.exp を作成中
+  Team.vcxproj -> C:\Users\student\Desktop\新しいフォルダー (10)\joycon_directX\Project01\Debug\Team.exe

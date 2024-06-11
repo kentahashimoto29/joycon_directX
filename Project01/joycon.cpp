@@ -1,5 +1,8 @@
 #include "hidapi\hidapi.h"
 #include "joycon.h"
+#include "aim.h"
+#include "game.h"
+
 
 #include <iostream>
 #include <stdio.h>
@@ -16,18 +19,20 @@
 #define VENDOR_ID  0x057E  // Nintendo Co., Ltd //0d1406
 
 //====================================================================
-//コンストラクタ
+// コンストラクタ
 //====================================================================
 CJoycon::CJoycon()
 {
     // read input report
-    uint8_t buff[0x40]; memset(buff, 0x00, size_t(0x40));
+    m_buff[0x40]; memset(m_buff, 0x00, size_t(0x40));
     // 読み込むサイズを指定。
-    size_t size = sizeof(buff);
+    m_size = sizeof(m_buff);
+    m_globalCount = 0;
+    m_device = nullptr;
 }
 
 //====================================================================
-//デストラクタ
+// デストラクタ
 //====================================================================
 CJoycon::~CJoycon()
 {
@@ -35,10 +40,21 @@ CJoycon::~CJoycon()
 }
 
 //====================================
+// 初期化(hidapi)
+//====================================
+void CJoycon::initialize_hidapi()
+{
+    if (hid_init()) {
+        std::cerr << "Failed to initialize HIDAPI." << std::endl;
+        exit(-1);
+    }
+}
+
+//====================================
 // 見つけて接続します
 //====================================
-hid_device* CJoycon::open_joycon() {
-    //struct hid_device_info* devs = hid_enumerate(0x057e, 0x2006); // Joy-ConのベンダーIDとプロダクトID
+hid_device* CJoycon::open_joycon()
+{
     struct hid_device_info* devs = hid_enumerate(0, 0); // Joy-ConのベンダーIDとプロダクトID
     hid_device* handle = nullptr;
 
@@ -47,13 +63,11 @@ hid_device* CJoycon::open_joycon() {
         if (devs->product_id == JOYCON_L_PRODUCT_ID || devs->product_id == JOYCON_R_PRODUCT_ID)
         {
             // プロダクトID等を指定して、HID deviceをopenする。そうすると、そのhidデバイスの情報が載ったhid_deviceが帰ってくる。
-            hid_device* handle = hid_open(devs->vendor_id, devs->product_id, devs->serial_number);
+            handle = hid_open(devs->vendor_id, devs->product_id, devs->serial_number);
         }
 
         devs = devs->next;
     }
-
-    exit(-1);
 
     hid_free_enumeration(devs);
     return handle;
@@ -62,56 +76,57 @@ hid_device* CJoycon::open_joycon() {
 //====================================
 // Joyconに出力
 //====================================
-void CJoycon::SendSubcommand(hid_device* dev, uint8_t command, uint8_t data[], int len, int* globalCount)
+void CJoycon::SendSubcommand(hid_device* m_device, uint8_t command, uint8_t data[], int len, int* m_globalCount)
 {
     uint8_t buf[0x40]; memset(buf, 0x0, size_t(0x40));
 
     buf[0] = 1; // 0x10 for rumble only
-    buf[1] = *globalCount; // Increment by 1 for each packet sent. It loops in 0x0 - 0xF range.
+    buf[1] = *m_globalCount; // Increment by 1 for each packet sent. It loops in 0x0 - 0xF range.
 
-    if (*globalCount == 0xf0) {
-        *globalCount = 0x00;
+    if (*m_globalCount == 0xf0) {
+        *m_globalCount = 0x00;
     }
     else {
-        *globalCount++;
+        *m_globalCount++;
     }
 
     buf[10] = command;
     memcpy(buf + 11, data, len);
 
-    hid_write(dev, buf, 0x40);
+    hid_write(m_device, buf, 0x40);
 }
 
 //====================================
 // センサーを有効にする
 //====================================
-void CJoycon::enable_sensors(hid_device* handle) {
+void CJoycon::enable_sensors(hid_device* handle)
+{
     uint8_t data[0x01];
 
-    hid_set_nonblocking(dev, 0);
+    hid_set_nonblocking(m_device, 0);
 
     // 0x30番のサブコマンドに、0x01を送信します。
     data[0] = 0x01; //Report ID
-    SendSubcommand(dev, 0x30, data, 1, &globalCount);
+    SendSubcommand(m_device, 0x30, data, 1, &m_globalCount);
 
     do
     {
         data[0] = 0x30; //command
-        SendSubcommand(dev, 0x03, data, 1, &globalCount);
+        SendSubcommand(m_device, 0x03, data, 1, &m_globalCount);
 
         data[0] = 0x01; //command
-        SendSubcommand(dev, 0x40, data, 1, &globalCount);
+        SendSubcommand(m_device, 0x40, data, 1, &m_globalCount);
 
         // input report を受けとる。
-        int ret = hid_read(dev, buff, size);
+        int ret = hid_read(m_device, m_buff, m_size);
 
-    } while (*buff != 0x30 || buff[13] == 0);       //入力レポートのIDが48だったら、IMUデータが入っているか
+    } while (*m_buff != 0x30 || m_buff[13] == 0);       //入力レポートのIDが48だったら、IMUデータが入っているか
 }
 
 //====================================
 // IMUの更新処理
 //====================================
-void CJoycon::Sensor_Update() 
+void CJoycon::Button_Update()
 {
     int16_t accel[2];
     int16_t gyro[2];
@@ -119,20 +134,122 @@ void CJoycon::Sensor_Update()
     for (int i = 0; i < 2; i++)
     {
         //加速度を取得
-        accel[i] = (buff[13 + 2 * i] | (buff[14 + 2 * i] << 8) & 0xFF00);
+        accel[i] = (m_buff[13 + 2 * i] | (m_buff[14 + 2 * i] << 8) & 0xFF00);
 
         //加速度を補正
-        accel_correction[i] = (float)accel[i] * 0.000244f;
+        m_accel_correction[i] = (float)accel[i] * 0.000244f;
     }
 
 
     for (int i = 0; i < 2; i++)
     {
         //回転速度を取得
-        gyro[i] = (buff[19 + 2 * i] | (buff[20 + 2 * i] << 8) & 0xFF00);
+        gyro[i] = (m_buff[19 + 2 * i] | (m_buff[20 + 2 * i] << 8) & 0xFF00);
 
         //回転速度を補正
-        gyro_radian[i] = (float)accel[i] * 0.070f;
+        m_gyro_radian[i] = (float)accel[i] * 0.070f;
+    }
+}
+
+//====================================
+// IMUの更新処理
+//====================================
+void CJoycon::Sensor_Update()
+{
+    int16_t accel[3];
+    int16_t gyro[3];
+
+    for (int j = 0; j < 2; j++)
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            //加速度を取得
+            accel[i] = (m_buff[13 + 2 * i + j * 12] | (m_buff[14 + 2 * i + j * 12] << 8) & 0xFF00);
+
+            //加速度を補正
+            switch (i)
+            {
+            case 0:
+                m_accel_correction.x = (float)accel[i] * 0.000244f;
+                break;
+
+            case 1:
+                m_accel_correction.y = (float)accel[i] * 0.000244f;
+                break;
+
+            case 2:
+                m_accel_correction.z = (float)accel[i] * 0.000244f;
+                break;
+            }
+        }
+
+
+
+        for (int i = 0; i < 3; i++)
+        {
+            //回転速度を取得
+            gyro[i] = (m_buff[19 + 2 * i + j * 12] | (m_buff[20 + 2 * i + j * 12] << 8) & 0xFF00);
+
+            //回転速度を補正
+            switch (i)
+            {
+            case 0:
+                m_gyro_radian.x = (float)gyro[i] * 0.070f * 0.1f;
+                break;
+
+            case 1:
+                m_gyro_radian.y = (float)gyro[i] * 0.070f * 0.1f;
+                break;
+
+            case 2:
+                m_gyro_radian.z = (float)gyro[i] * 0.070f * 0.1f;
+                break;
+            }
+        }
+
+        if (m_accel_correction <= D3DXVECTOR3(0.2f, 0.2f, 0.2f))
+        {
+            m_accel_correction = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
+        }
+
+        if (m_gyro_radian.x <= 0.1f && m_gyro_radian.x >= -0.1f)
+        {
+            m_gyro_radian.x = 0.0f;
+        }
+
+        if (m_gyro_radian.y <= 0.1f && m_gyro_radian.y >= -0.1f)
+        {
+            m_gyro_radian.y = 0.0f;
+        }
+
+        if (m_gyro_radian.z <= 0.1f && m_gyro_radian.z >= -0.1f)
+        {
+            m_gyro_radian.z = 0.0f;
+        }
+    }
+}
+
+//====================================
+// ジョイコンの初期化処理
+//====================================
+HRESULT CJoycon::Init()
+{
+    initialize_hidapi();
+    m_device = open_joycon();
+    enable_sensors(m_device);
+
+    return S_OK;
+}
+
+//====================================
+// ジョイコンの終了処理
+//====================================
+void CJoycon::Uninit()
+{
+    if (m_device != nullptr)
+    {
+        delete m_device;
+        m_device = nullptr;
     }
 }
 
@@ -142,21 +259,20 @@ void CJoycon::Sensor_Update()
 void CJoycon::Update()
 {
     // input report を受けとる。
-    int ret = hid_read(dev, buff, size);
+    int ret = hid_read(m_device, m_buff, m_size);
 
     // input report の id が 0x3F のものに絞る。
-    if (*buff != 0x3F)
+    if (*m_buff != 0x3F)
     {
-        printf("\ninput report id: %d\n", *buff);
-
-        if (*buff == 0x30)
+        if (*m_buff == 0x30)
         {
             Sensor_Update();
+
+            SetButton(m_buff[5]);
         }
 
         return;
     }
-
     //// input report の id　を表示
     //printf("\ninput report id: %d\n", *buff);
     //// ボタンのビットフィールドを表示
@@ -188,15 +304,6 @@ void CJoycon::Update()
 
 /*
 
-//====================================
-// 初期化
-//====================================
-void initialize_hidapi() {
-    if (hid_init()) {
-        std::cerr << "Failed to initialize HIDAPI." << std::endl;
-        exit(-1);
-    }
-}
 
 //====================================
 // コマンドを送信

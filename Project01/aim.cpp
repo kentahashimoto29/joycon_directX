@@ -5,8 +5,8 @@
 //
 //============================================
 #include "aim.h"
-#include "manager.h"
 #include "input.h"
+#include "joycon.h"
 #include "useful.h"
 #include "manager.h"
 #include "renderer.h"
@@ -19,7 +19,7 @@ namespace
 {
 	D3DXVECTOR2 AIM_SIZE = { 5.0f, 5.0f };	// 大きさ
 	float DISTANCE = 100.0f;				// エイムの距離
-	float SENSITIVITY = 0.01f;				// 感度
+	float SENSITIVITY = 0.0015f;				// 感度
 }
 
 //====================================================================
@@ -118,6 +118,8 @@ void CAim::Draw()
 void CAim::CursorMove()
 {
 	// 情報を取得
+	CJoycon* pJoycon = CManager::GetInstance()->GetJoycon();
+
 	CInputMouse* pMouse = CManager::GetInstance()->GetInputMouse();
 	CCamera* pCamera = CManager::GetInstance()->GetCamera();
 
@@ -126,10 +128,11 @@ void CAim::CursorMove()
 		return;
 	}
 
-	if (pMouse != nullptr)
+	if (pJoycon != nullptr)
 	{
-		// マウス情報を取得
-		D3DXVECTOR3 move = pMouse->GetMouseMove();	// 移動量
+		// ジョイコン情報を取得
+		D3DXVECTOR3 moveAccel = pJoycon->GetAccel();	// 移動量
+		D3DXVECTOR3 moveGyro = pJoycon->GetGyro();	// 移動量
 		// エイム情報を取得
 		D3DXVECTOR3 pos = GetPos();
 		D3DXVECTOR3 rot = GetRot();
@@ -137,16 +140,23 @@ void CAim::CursorMove()
 		m_info.rotOld = rot;
 
 		// 向きを加算
-		rot.x += (-move.y) * SENSITIVITY;
-		rot.y += move.x * SENSITIVITY;
+		rot.x += (-moveGyro.y) * SENSITIVITY;
+		rot.y += (-moveGyro.z) * SENSITIVITY;
 
 		// 移動範囲の制限
-		Limit(&rot, &move);
+		Limit(&rot, &moveGyro);
+
+		if (pJoycon->GetButton() == 0x40)
+		{
+			rot = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
+		}
 
 		// 照準の位置を計算
 		pos.x = pCamera->GetPosV().x + sinf(pCamera->GetRot().y + rot.y) * cosf(pCamera->GetRot().x + rot.x) * DISTANCE;
 		pos.z = pCamera->GetPosV().z + cosf(pCamera->GetRot().y + rot.y) * cosf(pCamera->GetRot().x + rot.x) * DISTANCE;
 		pos.y = pCamera->GetPosV().y + sinf(pCamera->GetRot().x + rot.x) * DISTANCE;
+
+		CManager::GetInstance()->GetDebugProc()->Print("Gyro %f, %f, %f", moveGyro.x, moveGyro.y, moveGyro.z);
 
 		// 位置設定
 		SetPos(pos);

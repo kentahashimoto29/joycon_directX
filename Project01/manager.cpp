@@ -8,6 +8,7 @@
 #include "renderer.h"
 #include "debugproc.h"
 #include "input.h"
+#include "joycon.h"
 #include "camera.h"
 #include "light.h"
 #include "objectX.h"
@@ -55,6 +56,7 @@ CManager::CManager()
 	m_pInputKeyboard = nullptr;
 	m_pInputJoyPad = nullptr;
 	m_pInputMouse = nullptr;
+	m_pJoycon = nullptr;
 	m_pCamera = nullptr;
 	m_pLight = nullptr;
 	m_pTexture = nullptr;
@@ -157,6 +159,17 @@ HRESULT CManager::Init(HINSTANCE hInstance, HWND hWnd, BOOL bWindow)
 	}
 	//キーボードの初期化処理
 	if (FAILED(m_pInputMouse->Init(hInstance, hWnd)))
+	{//初期化処理が失敗した場合
+		return E_FAIL;
+	}
+
+	if (m_pJoycon == nullptr)
+	{
+		//マウスの生成
+		m_pJoycon = new CJoycon;
+	}
+	//キーボードの初期化処理
+	if (FAILED(m_pJoycon->Init()))
 	{//初期化処理が失敗した場合
 		return E_FAIL;
 	}
@@ -290,6 +303,15 @@ void CManager::Uninit(void)
 		m_pCamera = nullptr;
 	}
 
+	if (m_pJoycon != nullptr)
+	{
+		//ジョイコンの終了処理
+		m_pJoycon->Uninit();
+
+		delete m_pJoycon;
+		m_pJoycon = nullptr;
+	}
+
 	if (m_pInputMouse != nullptr)
 	{
 		//ジョイパッドの終了処理
@@ -371,6 +393,9 @@ void CManager::Update(void)
 
 	//マウスの更新処理
 	m_pInputMouse->Update();
+
+	//ジョイコンの更新処理
+	m_pJoycon->Update();
 
 #ifdef _DEBUG
 

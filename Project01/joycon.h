@@ -82,24 +82,34 @@ public:
 		JOYSTICK_MAX,
 	}JOYCON_STICK;
 
-	void SendSubcommand(hid_device* dev, uint8_t command, uint8_t data[], int len, int* globalCount);
+	void SendSubcommand(hid_device* m_device, uint8_t command, uint8_t data[], int len, int* m_globalCount);
 	void enable_sensors(hid_device* handle);
 	hid_device* open_joycon();
+	void initialize_hidapi();
 
 	void Sensor_Update();
+	void Button_Update();
 
+	HRESULT Init();
+	void Uninit();
 	void Update();
 
+	D3DXVECTOR3 GetAccel() { return m_accel_correction; }
+	D3DXVECTOR3 GetGyro() { return m_gyro_radian; }
+
+	void SetButton(int ButtonType) { m_Button = ButtonType; }
+	int GetButton() { return m_Button; }
+
 protected:
-	float accel_correction[2];
-	float gyro_radian[2];
+	D3DXVECTOR3 m_accel_correction;
+	D3DXVECTOR3 m_gyro_radian;
 
-	D3DXVECTOR3 inverse_vector;
-
-	int globalCount = 0;
-	hid_device* dev;
-	uint8_t buff[0x40];
-	size_t size;
+	int m_globalCount;
+	int m_Button;
+	hid_device* m_device;
+	uint8_t m_buff[0x40];
+	size_t m_size;					//バフサイズ
+	hid_device* m_deviceLR[2];		//左右用
 };
 
 #endif
